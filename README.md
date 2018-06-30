@@ -36,3 +36,10 @@ public class Demo {
     }
 }
 ```
+
+Output:
+```
+Han Solo is cached: true
+Han Solo is cached: true
+Han Solo is cached: false
+```
