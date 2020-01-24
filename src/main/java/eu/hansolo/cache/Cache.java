@@ -21,6 +21,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -29,13 +30,13 @@ import java.util.stream.Collectors;
 
 
 public class Cache<K,V> {
-    private ScheduledExecutorService      executor;
-    private ConcurrentHashMap<K, V>       cache;
-    private ConcurrentHashMap<K, Instant> timeoutMap;
-    private long                          timeout;
-    private TimeUnit                      timeUnit;
-    private ChronoUnit                    chronoUnit;
-    private int                           limit;
+    private ScheduledExecutorService executor;
+    private Map<K, V>                cache;
+    private Map<K, Instant>          timeoutMap;
+    private long                     timeout;
+    private TimeUnit                 timeUnit;
+    private ChronoUnit               chronoUnit;
+    private int                      limit;
 
 
     // ******************** Constructors **************************************
@@ -43,13 +44,13 @@ public class Cache<K,V> {
         this(timeout, timeUnit, Integer.MAX_VALUE);
     }
     public Cache(final int limit) {
-        this(0, TimeUnit.MILLISECONDS, Integer.MAX_VALUE);
+        this(0, TimeUnit.MILLISECONDS, limit);
     }
     public Cache(final long timeout, final TimeUnit timeUnit, final int limit) {
         this();
 
         if (timeout < 0) { throw new IllegalArgumentException("\"Timeout cannot be negative\""); }
-        if (timeout > 0 && null == timeUnit) { throw new IllegalArgumentException("TimeUnit cannot be null if timeout is > 0"); }
+        if (null == timeUnit) { throw new IllegalArgumentException("TimeUnit cannot be null if timeout is > 0"); }
         if (limit < 1) { throw new IllegalArgumentException("Limit cannot be smaller than 1"); }
 
         this.timeout  = timeout;
@@ -65,13 +66,12 @@ public class Cache<K,V> {
         }); // Daemon Service
         cache      = new ConcurrentHashMap<>();
         timeoutMap = new ConcurrentHashMap<>();
+        //cache      = new WeakHashMap<>();
+        //timeoutMap = new WeakHashMap<>();
     }
 
 
     // ******************** Public Methods ************************************
-    public static CacheBuilder builder() {
-        return builder(new Cache<>());
-    }
     public static CacheBuilder builder(final Cache cache) {
         return new CacheBuilder(cache);
     }
@@ -93,6 +93,7 @@ public class Cache<K,V> {
 
     public Optional<V> get(final K key) { return Optional.ofNullable(getIfPresent(key)); }
     public void put(final K key, final V value) {
+        if (limit < Integer.MAX_VALUE) { checkSize(); }
         cache.putIfAbsent(key, value);
         timeoutMap.putIfAbsent(key, Instant.now());
     }
@@ -117,25 +118,25 @@ public class Cache<K,V> {
     }
 
     private void checkTime() {
-        Instant cutoffTime  = Instant.now().minus(timeout, chronoUnit);
-        List<K> toBeRemoved = timeoutMap.entrySet()
-                                        .stream()
-                                        .filter(entry -> entry.getValue()
-                                                              .isBefore(cutoffTime))
-                                        .map(Map.Entry::getKey)
-                                        .collect(Collectors.toList());
+        final Instant cutoffTime  = Instant.now().minus(timeout, chronoUnit);
+        final List<K> toBeRemoved = timeoutMap.entrySet()
+                                              .stream()
+                                              .filter(entry -> entry.getValue()
+                                                                    .isBefore(cutoffTime))
+                                              .map(Map.Entry::getKey)
+                                              .collect(Collectors.toList());
         removeEntries(toBeRemoved);
     }
 
     private void checkSize() {
-        if (cache.size() <= limit) return;
-        int     surplusEntries = cache.size() - limit;
-        List<K> toBeRemoved    = timeoutMap.entrySet()
-                                           .stream()
-                                           .sorted(Map.Entry.<K, Instant>comparingByValue().reversed())
-                                           .limit(surplusEntries)
-                                           .map(Map.Entry::getKey)
-                                           .collect(Collectors.toList());
+        if (cache.size() <= limit) { return; }
+        final int     surplusEntries = cache.size() - limit;
+        final List<K> toBeRemoved    = timeoutMap.entrySet()
+                                                 .stream()
+                                                 .sorted(Map.Entry.<K, Instant>comparingByValue().reversed())
+                                                 .limit(surplusEntries)
+                                                 .map(Map.Entry::getKey)
+                                                 .collect(Collectors.toList());
         removeEntries(toBeRemoved);
     }
 
@@ -143,6 +144,7 @@ public class Cache<K,V> {
         toBeRemoved.forEach(key -> {
             timeoutMap.remove(key);
             cache.remove(key);
+            System.out.println("Removed key: " + key);
         });
     }
 
@@ -167,7 +169,6 @@ public class Cache<K,V> {
         private CacheBuilder(final Cache cache) {
             this.cache = cache;
         }
-
 
 
         // ******************** Public Methods ********************************

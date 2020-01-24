@@ -18,34 +18,40 @@ package eu.hansolo.cache;
 
 import eu.hansolo.cache.Cache.CacheBuilder;
 
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 
 public class Demo {
-    private Cache<String, Integer> cache;
 
     public Demo() {
-        //cache = new Cache<>();
-
-        //cache = Cache.builder(new Cache<>()).withLimit(10).withTimeout(1, TimeUnit.SECONDS).build();
-        cache = Cache.builder().withLimit(10).withTimeout(1, TimeUnit.SECONDS).build();
-
-        //CacheBuilder builder = Cache.builder(cache);
-        //builder.withLimit(10).withTimeout(1, TimeUnit.SECONDS).build();
+        final long             millis  = 1000;
+        Cache<String, Integer> cache   = new Cache<>(millis, TimeUnit.MILLISECONDS);
+        CacheBuilder           builder = Cache.builder(cache);
+        builder.build();
 
         String name1 = "Han Solo";
 
         cache.put(name1, 10);
 
-        System.out.println(name1 + " is cached: " + cache.isCached(name1));
+        Long startEpochMillis = Instant.now().toEpochMilli();
+        System.out.println(name1 + " is cached: " + cache.isCached(name1) + " (" + (Instant.now().toEpochMilli() - startEpochMillis) + " ms)\n");
 
-        try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); }
+        try { Thread.sleep(millis); } catch (InterruptedException e) { e.printStackTrace(); }
 
-        System.out.println(name1 + " is cached: " + cache.isCached(name1));
+        System.out.println(name1 + " is cached: " + cache.isCached(name1) + " (" + (Instant.now().toEpochMilli() - startEpochMillis) + " ms)\n");
 
-        try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); }
+        try { Thread.sleep(millis); } catch (InterruptedException e) { e.printStackTrace(); }
 
-        System.out.println(name1 + " is cached: " + cache.isCached(name1));
+        System.out.println(name1 + " is cached: " + cache.isCached(name1) + " (" + (Instant.now().toEpochMilli() - startEpochMillis) + " ms)\n");
+
+        try { Thread.sleep(millis); } catch (InterruptedException e) { e.printStackTrace(); }
+
+        System.out.println(name1 + " is cached: " + cache.isCached(name1) + " (" + (Instant.now().toEpochMilli() - startEpochMillis) + " ms)\n");
+
+        try { Thread.sleep(millis); } catch (InterruptedException e) { e.printStackTrace(); }
+
+        System.out.println(name1 + " is cached: " + cache.isCached(name1) + " (" + (Instant.now().toEpochMilli() - startEpochMillis) + " ms)\n");
     }
 
 
