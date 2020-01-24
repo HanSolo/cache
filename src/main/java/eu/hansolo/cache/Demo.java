@@ -25,26 +25,29 @@ public class Demo {
     private Cache<String, Integer> cache;
 
     public Demo() {
-        cache = new Cache<>();
-        CacheBuilder builder = Cache.builder(cache);
-        builder.withLimit(10).withTimeout(1, TimeUnit.SECONDS).build();
+        //cache = new Cache<>();
+
+        //cache = Cache.builder(new Cache<>()).withLimit(10).withTimeout(1, TimeUnit.SECONDS).build();
+        cache = Cache.builder().withLimit(10).withTimeout(1, TimeUnit.SECONDS).build();
+
+        //CacheBuilder builder = Cache.builder(cache);
+        //builder.withLimit(10).withTimeout(1, TimeUnit.SECONDS).build();
 
         String name1 = "Han Solo";
 
         cache.put(name1, 10);
 
-        System.out.println(name1 + " is cached: " + isCached(name1));
+        System.out.println(name1 + " is cached: " + cache.isCached(name1));
 
         try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); }
 
-        System.out.println(name1 + " is cached: " + isCached(name1));
+        System.out.println(name1 + " is cached: " + cache.isCached(name1));
 
         try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); }
 
-        System.out.println(name1 + " is cached: " + isCached(name1));
+        System.out.println(name1 + " is cached: " + cache.isCached(name1));
     }
 
-    private boolean isCached(final String KEY) { return cache.get(KEY).isPresent(); }
 
     public static void main(String[] args) {
         new Demo();

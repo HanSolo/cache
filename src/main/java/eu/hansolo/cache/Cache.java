@@ -39,23 +39,23 @@ public class Cache<K,V> {
 
 
     // ******************** Constructors **************************************
-    public Cache(final long TIMEOUT, final TimeUnit TIME_UNIT) {
-        this(TIMEOUT, TIME_UNIT, Integer.MAX_VALUE);
+    public Cache(final long timeout, final TimeUnit timeUnit) {
+        this(timeout, timeUnit, Integer.MAX_VALUE);
     }
-    public Cache(final int LIMIT) {
+    public Cache(final int limit) {
         this(0, TimeUnit.MILLISECONDS, Integer.MAX_VALUE);
     }
-    public Cache(final long TIMEOUT, final TimeUnit TIME_UNIT, final int LIMIT) {
+    public Cache(final long timeout, final TimeUnit timeUnit, final int limit) {
         this();
 
-        if (TIMEOUT < 0) { throw new IllegalArgumentException("\"Timeout cannot be negative\""); }
-        if (TIMEOUT > 0 && null == TIME_UNIT) { throw new IllegalArgumentException("TimeUnit cannot be null if timeout is > 0"); }
-        if (LIMIT < 1) { throw new IllegalArgumentException("Limit cannot be smaller than 1"); }
+        if (timeout < 0) { throw new IllegalArgumentException("\"Timeout cannot be negative\""); }
+        if (timeout > 0 && null == timeUnit) { throw new IllegalArgumentException("TimeUnit cannot be null if timeout is > 0"); }
+        if (limit < 1) { throw new IllegalArgumentException("Limit cannot be smaller than 1"); }
 
-        timeout    = TIMEOUT;
-        timeUnit   = TIME_UNIT;
-        chronoUnit = convertToChronoUnit(timeUnit);
-        limit      = LIMIT;
+        this.timeout  = timeout;
+        this.timeUnit = timeUnit;
+        chronoUnit    = convertToChronoUnit(this.timeUnit);
+        this.limit    = limit;
     }
     public Cache() {
         executor   = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -68,7 +68,19 @@ public class Cache<K,V> {
     }
 
 
-    // ******************** Methods *******************************************
+    // ******************** Public Methods ************************************
+    public static CacheBuilder builder() {
+        return builder(new Cache<>());
+    }
+    public static CacheBuilder builder(final Cache cache) {
+        return new CacheBuilder(cache);
+    }
+
+
+    public boolean isCached(final K key) {
+        return get(key).isPresent();
+    }
+
     public long getLimit() { return limit; }
 
     public long getTimeout() { return timeout; }
@@ -77,24 +89,22 @@ public class Cache<K,V> {
 
     public int getSize() { return cache.size(); }
 
-    public V getIfPresent(final K KEY) { return cache.getOrDefault(KEY, null); }
+    public V getIfPresent(final K key) { return cache.getOrDefault(key, null); }
 
-    public Optional<V> get(final K KEY) { return Optional.ofNullable(getIfPresent(KEY)); }
-    public void put(final K KEY, final V VALUE) {
-        cache.putIfAbsent(KEY, VALUE);
-        timeoutMap.putIfAbsent(KEY, Instant.now());
+    public Optional<V> get(final K key) { return Optional.ofNullable(getIfPresent(key)); }
+    public void put(final K key, final V value) {
+        cache.putIfAbsent(key, value);
+        timeoutMap.putIfAbsent(key, Instant.now());
     }
-    public void remove(final K KEY) {
-        cache.remove(KEY);
-        timeoutMap.remove(KEY);
-    }
-
-    public static CacheBuilder builder(final Cache CACHE) {
-        return new CacheBuilder(CACHE);
+    public void remove(final K key) {
+        cache.remove(key);
+        timeoutMap.remove(key);
     }
 
-    private ChronoUnit convertToChronoUnit(final TimeUnit TIME_UNIT) {
-        switch(TIME_UNIT) {
+
+    // ******************** Private Methods ***********************************
+    private ChronoUnit convertToChronoUnit(final TimeUnit timeUnit) {
+        switch(timeUnit) {
             case NANOSECONDS : return ChronoUnit.NANOS;
             case MICROSECONDS: return ChronoUnit.MICROS;
             case MILLISECONDS: return ChronoUnit.MILLIS;
@@ -129,22 +139,22 @@ public class Cache<K,V> {
         removeEntries(toBeRemoved);
     }
 
-    private void removeEntries(final List<K> TO_BE_REMOVED) {
-        TO_BE_REMOVED.forEach(key -> {
+    private void removeEntries(final List<K> toBeRemoved) {
+        toBeRemoved.forEach(key -> {
             timeoutMap.remove(key);
             cache.remove(key);
         });
     }
 
-    private static int clamp(final int MIN, final int MAX, final int VALUE) {
-        if (VALUE < MIN) return MIN;
-        if (VALUE > MAX) return MAX;
-        return VALUE;
+    private static int clamp(final int min, final int max, final int value) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
     }
-    private static long clamp(final long MIN, final long MAX, final long VALUE) {
-        if (VALUE < MIN) return MIN;
-        if (VALUE > MAX) return MAX;
-        return VALUE;
+    private static long clamp(final long min, final long max, final long value) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
     }
 
 
@@ -153,24 +163,27 @@ public class Cache<K,V> {
         private final Cache cache;
 
 
-        private CacheBuilder(final Cache CACHE) {
-            cache = CACHE;
+        // ******************** Constructors **********************************
+        private CacheBuilder(final Cache cache) {
+            this.cache = cache;
         }
 
 
-        public CacheBuilder withLimit(final int LIMIT) {
-            if (LIMIT < 1) { throw new IllegalArgumentException("\"Limit cannot be smaller than 1\""); }
-            cache.limit = LIMIT;
+
+        // ******************** Public Methods ********************************
+        public CacheBuilder withLimit(final int limit) {
+            if (limit < 1) { throw new IllegalArgumentException("\"Limit cannot be smaller than 1\""); }
+            cache.limit = limit;
             cache.checkSize();
             return this;
         }
 
-        public CacheBuilder withTimeout(final long TIMEOUT, final TimeUnit TIME_UNIT) {
-            if (TIMEOUT < 0) { throw new IllegalArgumentException("Timeout cannot be negative"); }
-            if (null == TIME_UNIT) { throw new IllegalArgumentException("TimeUnit cannot be null"); }
-            cache.timeout    = clamp(0, Long.MAX_VALUE, TIMEOUT);
-            cache.timeUnit   = TIME_UNIT;
-            cache.chronoUnit = cache.convertToChronoUnit(TIME_UNIT);
+        public CacheBuilder withTimeout(final long timeout, final TimeUnit timeUnit) {
+            if (timeout < 0) { throw new IllegalArgumentException("Timeout cannot be negative"); }
+            if (null == timeUnit) { throw new IllegalArgumentException("TimeUnit cannot be null"); }
+            cache.timeout    = clamp(0, Long.MAX_VALUE, timeout);
+            cache.timeUnit   = timeUnit;
+            cache.chronoUnit = cache.convertToChronoUnit(timeUnit);
             return this;
         }
 
