@@ -26,9 +26,17 @@ public class Demo {
 
     public Demo() {
         final long             millis  = 1000;
-        Cache<String, Integer> cache   = new Cache<>(millis, TimeUnit.MILLISECONDS);
-        CacheBuilder           builder = Cache.builder(cache);
-        builder.build();
+
+        // Possibility 1
+        //Cache<String, Integer> cache   = new Cache<>(millis, TimeUnit.MILLISECONDS);
+        //CacheBuilder           builder = Cache.builder(cache);
+        //builder.build();
+
+        // Possibility 2
+        //Cache<String, Integer> cache = Cache.builder(new Cache<String, Integer>()).withTimeout(millis, TimeUnit.MILLISECONDS).withLimit(2).build();
+
+        // Possibility 3
+        Cache<String, Integer> cache = Cache.builder(new Cache<String, Integer>(millis, TimeUnit.MILLISECONDS, 2)).build();
 
         String name1 = "Han Solo";
 
